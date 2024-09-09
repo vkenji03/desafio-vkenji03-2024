@@ -32,40 +32,53 @@ const animais_info = {
 }
 
 class Recintos {
-    constructor(numero, bioma, tamanho_total, animais_existentes, carnivoro) {
+    constructor(numero, bioma, tamanho_total, animais_existentes) {
         this.numero = numero;
         this.bioma = bioma;
         this.tamanho_total = tamanho_total;
         this.animais_existentes = animais_existentes;
-        this.carnivoro = carnivoro;
+        this.carnivoro = false;
         this.espaco_ocupado = 0;
 
-        if (!Number.isNaN(this.animais_existentes)) {
+        if (this.num_animals() > 0) {
             for (let animal in this.animais_existentes) {
                 this.espaco_ocupado += this.animais_existentes[animal] * animais_info[animal].tamanho;
+                if (!this.carnivoro && animais_info[animal].carnivoro) {
+                    this.carnivoro = true;
+                }
             }
         }
 
+    }
+
+    num_animals() {
+        return Object.keys(this.animais_existentes).length
+    }
+
+    tem_animal(animal) {
+        return this.animais_existentes.hasOwnProperty(animal);
+    }
+
+    espaco_disponivel() {
+        return this.tamanho_total - this.espaco_ocupado
     }
 }
 
 class RecintosZoo {
     constructor() {
         this.recintos = [];
-        const numeros = [1, 2, 3, 4, 5];
         const biomas = ['savana', 'floresta', 'savana e rio', 'rio', 'savana'];
         const tamanho_total = [10, 5, 7, 8, 9];
         const animais_existentes = [
             {'macaco': 3},
-            NaN,
+            {},
             {'gazela': 1},
-            NaN,
+            {},
             {'leao': 1}
         ];
-        const carnivoro = [false, NaN, false, NaN, true];
 
         for (let i = 0; i < 5; i++) {
-            this.recintos.push(new Recintos(numeros[i], biomas[i], tamanho_total[i], animais_existentes[i], carnivoro[i]));
+            this.recintos.push(new Recintos(i + 1, biomas[i], tamanho_total[i], animais_existentes[i]));
         }
     }
 
@@ -86,32 +99,36 @@ class RecintosZoo {
         for (const recinto of this.recintos) {
             if (animal_info.bioma.has(recinto.bioma)) {
                 if (!animal_info.carnivoro && !recinto.carnivoro) {
-                    if (animal != 'hipopotamo' && recinto.espaco_ocupado + animal_info.espaco_ocupado <= recinto.tamanho_total) {
-                        if (Number.isNaN(recinto.animais_existentes)) {
+                    if (animal != 'hipopotamo' &&  animal_info.espaco_ocupado <= recinto.espaco_disponivel()) {
+                        if (recinto.num_animals() == 0) { // nao existe nenhum animal no recinto
                             if (animal == 'macaco' && quantidade == 1) {
                                 continue;
                             }
                             recinto.espaco_ocupado += animal_info.espaco_ocupado;
                             biomas.push(recinto);
-                        } else if (recinto.animais_existentes.hasOwnProperty(animal) && recinto.espaco_ocupado + animal_info.espaco_ocupado <= recinto.tamanho_total) {
-                            recinto.espaco_ocupado += animal_info.espaco_ocupado;
-                            biomas.push(recinto);
-                        } else if (!recinto.animais_existentes.hasOwnProperty(animal) && recinto.espaco_ocupado + animal_info.espaco_ocupado < recinto.tamanho_total) {
+                        } else if (recinto.tem_animal(animal)) { // existe pelo menos um animal igual no recinto
+                            if (recinto.num_animals() > 1 && animal_info.espaco_ocupado < recinto.espaco_disponivel()) { // existe pelo menos dois animais diferentes no recinto
+                                recinto.espaco_ocupado += animal_info.espaco_ocupado + 1;
+                                biomas.push(recinto);
+                            } else if (recinto.num_animals() == 1) { // existe apenas um animal no recinto
+                                recinto.espaco_ocupado += animal_info.espaco_ocupado;
+                                biomas.push(recinto);
+                            }
+                        } else if (!recinto.tem_animal(animal) && animal_info.espaco_ocupado < recinto.espaco_disponivel()) { // existe pelo menos um animal no recinto e e diferente do animal que queremos adicionar
                             recinto.espaco_ocupado += animal_info.espaco_ocupado + 1;
                             biomas.push(recinto);
                         }
-                    } else if (animal == 'hipopotamo' && recinto.espaco_ocupado + animal_info.espaco_ocupado <= recinto.tamanho_total) {
-                        if (Number.isNaN(recinto.animais_existentes)) {
-                            console.log('hipo')
+                    } else if (animal == 'hipopotamo' && animal_info.espaco_ocupado <= recinto.espaco_disponivel()) {
+                        if (recinto.num_animals() == 0) {
                             recinto.espaco_ocupado += animal_info.espaco_ocupado;
                             biomas.push(recinto);
-                        } else if (!recinto.animais_existentes.hasOwnProperty(animal) && recinto.espaco_ocupado + animal_info.espaco_ocupado < recinto.tamanho_total && recinto.bioma == 'savana e rio') {
+                        } else if (!recinto.tem_animal(animal) && animal_info.espaco_ocupado < recinto.espaco_disponivel() && recinto.bioma == 'savana e rio') {
                             recinto.espaco_ocupado += animal_info.espaco_ocupado + 1;
                             biomas.push(recinto);
                         }
                     }
-                } else if (animal_info.carnivoro && (recinto.carnivoro || Number.isNaN(recinto.carnivoro))) {
-                    if ((recinto.animais_existentes.hasOwnProperty(animal) || Number.isNaN(recinto.animais_existentes)) && recinto.espaco_ocupado + animal_info.espaco_ocupado <= recinto.tamanho_total) {
+                } else if (animal_info.carnivoro && (recinto.carnivoro || recinto.num_animals() == 0)) {
+                    if ((recinto.tem_animal(animal) || recinto.num_animals() == 0) && animal_info.espaco_ocupado <= recinto.espaco_disponivel()) {
                         recinto.espaco_ocupado += animal_info.espaco_ocupado;
                         biomas.push(recinto);
                     }
@@ -125,7 +142,7 @@ class RecintosZoo {
 
         const out = []
         for (const bioma of biomas) {
-            out.push(`Recinto ${bioma.numero} (espaço livre: ${bioma.tamanho_total - bioma.espaco_ocupado} total: ${bioma.tamanho_total})`)
+            out.push(`Recinto ${bioma.numero} (espaço livre: ${bioma.espaco_disponivel()} total: ${bioma.tamanho_total})`)
         }
         return {recintosViaveis: out}
     }
@@ -135,4 +152,4 @@ class RecintosZoo {
 export { RecintosZoo as RecintosZoo };
 
 const x = new RecintosZoo();
-console.log(x.analisaRecintos('MACACO', 5));
+console.log(x.analisaRecintos('MACACO', 1));

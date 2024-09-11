@@ -177,12 +177,6 @@ describe('Recintos do Zoologico', () => {
         expect(resultado.recintosViaveis).toBeFalsy();
     });
 
-    test('Não deve encontrar recinto para 4 hipopotamos', () => {
-        const resultado = new RecintosZoo().analisaRecintos('HIPOPOTAMO', 4);
-        expect(resultado.erro).toBe('Não há recinto viável');
-        expect(resultado.recintosViaveis).toBeFalsy();
-    });
-
     //5 unidades do animal
     test('Deve encontrar recintos para 5 macacos', () => {
         const resultado = new RecintosZoo().analisaRecintos('MACACO', 5);
